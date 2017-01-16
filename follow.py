@@ -258,7 +258,7 @@ class Shape(object):
 
         # when you get too close, pick a direction to start turning away.
         # Keep turning that direction until you get far enough away again
-        if self.state is STATE_NORMAL and divisorUnit <= DISTANCE_AVERSION:
+        if self.state is STATE_NORMAL and divisorUnit <= math.sqrt(DISTANCE_AVERSION):
             self.state = random.choice([STATE_TURN_RIGHT, STATE_TURN_LEFT])
         if self.state is STATE_TURN_LEFT:
             vectorY, vectorX = vectorX, -1*vectorY
