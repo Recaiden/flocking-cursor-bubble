@@ -158,21 +158,8 @@ class Board(QtGui.QFrame):
         xAvg = sum([piece.x for piece in self.pieces])/len(self.pieces)
         yAvg = sum([piece.y for piece in self.pieces])/len(self.pieces)
 
-        for piece in self.pieces:            
-            # Towards other boids
-            piece.navigateTowardsOthers(xAvg, yAvg)
-
-            # Towards target, but don't ram it
-            piece.navigateToTarget(self.target)
-            
-            # Aversion
-            piece.navigateClear(self.pieces)
-                
-            # Gather and go
-            piece.finalizeHeading()
-
-            piece.x += math.cos(piece.heading)*MOVEMENT_FACTOR
-            piece.y += math.sin(piece.heading)*MOVEMENT_FACTOR
+        for piece in self.pieces:
+            piece.navigate(xAvg, yAvg, self.target, self.pieces)
 
         self.update()
 
@@ -303,6 +290,24 @@ class Shape(object):
             vectorXAversion += vectorX
             vectorYAversion += vectorY
         self.updateHeading(vectorX, vectorY, FOCUS_ON_AVOIDANCE)
+
+    def navigate(self, xAvg, yAvg, target, others):
+        # Towards other boids
+        self.navigateTowardsOthers(xAvg, yAvg)
+        
+        # Towards target, but don't ram it
+        self.navigateToTarget(target)
+        
+        # Aversion
+        self.navigateClear(others)
+        
+        # Gather and go
+        self.finalizeHeading()
+        
+        self.xOld = self.x
+        self.yOld = self.y
+        self.x += math.cos(self.heading)*MOVEMENT_FACTOR
+        self.y += math.sin(self.heading)*MOVEMENT_FACTOR
 
 def main():
     
