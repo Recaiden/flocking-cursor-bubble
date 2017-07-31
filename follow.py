@@ -16,7 +16,7 @@ class POINT(Structure):
 SQUARE_SIZE = 3
 
 NUM_BIOTS = 10
-TPS = 60
+TPS = 40
 TICK_SPEED = 1000/TPS
 MOVEMENT_FACTOR = 2
 DISTANCE_AVERSION = 25*25
@@ -42,8 +42,19 @@ class BiOverlay(QtGui.QMainWindow):
     
     def __init__(self):
         super(BiOverlay, self).__init__()
-        self.setGeometry(QtGui.QDesktopWidget().availableGeometry())
+        desktop = QtGui.QApplication.desktop()
+        cScreens = desktop.screenCount()
 
+        if cScreens == 1:
+            self.setGeometry(QtGui.QDesktopWidget().availableGeometry())
+        elif cScreens == 2:
+            self.setGeometry(desktop.availableGeometry(0).united(desktop.availableGeometry(1)))
+        else:
+            rect = desktop.availableGeometry(0)
+            for i in range(1, cScreens):
+                rect = rect.united(desktop.availableGeometry(i))
+            self.setGeometry(rect)
+            
         self.setMouseTracking(True)
 
         self.setWindowTitle('Biot Overlay')
@@ -52,20 +63,12 @@ class BiOverlay(QtGui.QMainWindow):
         self.setCentralWidget(self.overlay)
             
         self.overlay.start()
-        self.center()
 
         # No border
         #self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
         #self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-
-    def center(self):
-        
-        screen = QtGui.QDesktopWidget().screenGeometry()
-        size =  self.geometry()
-        self.move((screen.width()-size.width())/2, 
-            (screen.height()-size.height())/2)
 
 
 class Board(QtGui.QFrame):
@@ -90,48 +93,13 @@ class Board(QtGui.QFrame):
         self.board = []
 
         self.isStarted = False
-        self.isPaused = False
 
         self.target = QtCore.QPointF(5, 10)
         
     def start(self):
-        if self.isPaused:
-            return
-
         self.isStarted = True
 
         self.timer.start(Board.Speed, self)
-
-
-    def pause(self):
-        if not self.isStarted:
-            return
-
-        self.isPaused = not self.isPaused
-        
-        if self.isPaused:
-            self.timer.stop()
-        else:
-            self.timer.start(Board.Speed, self)
-
-        self.update()
-
-    def keyPressEvent(self, event):
-        if not self.isStarted or len(self.pieces) == 0:
-            QtGui.QWidget.keyPressEvent(self, event)
-            return
-
-        key = event.key()
-        
-        if key == QtCore.Qt.Key_P:
-            self.pause()
-            return
-        if self.isPaused:
-            return
-        elif key == QtCore.Qt.Key_D:
-            self.moveTowardsTarget()
-        else:
-            QtGui.QWidget.keyPressEvent(self, event)
 
     def timerEvent(self, event):
         #print ".",
