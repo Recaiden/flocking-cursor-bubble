@@ -6,7 +6,7 @@ STATE_NORMAL = 0
 STATE_TURN_LEFT = -1
 STATE_TURN_RIGHT = 1
 
-# These control the flgiht patterns.
+# These control the flight patterns.
 # None (all low) = they swoop around mostly ignoring each other.  Desired pattern.
 # Cohesion = they form into a tight coil and eventually cohere into a tight ball that tracks the target all together, only breaking apart once it has sailed far offscreen, where the process repeats.  It may close into a swirl around wth cursor without cohering.  Complex but visually boring
 # Avoidance = Followers 'bounce' off of each other, producing large course changes.  Desired pattern.
@@ -22,7 +22,7 @@ FOCUS_ON_AVOIDANCE = 0.7
 DISTANCE_ROOT = 25
 DISTANCE_AVERSION = DISTANCE_ROOT**2
 
-MOVEMENT_FACTOR = 2
+MOVEMENT_FACTOR = 3
 SQUARE_SIZE = 3
 
 colorTable = [0x101010, 0xCC6666, 0x66CC66, 0x6666CC,
@@ -44,7 +44,7 @@ class Follower(object):
         self.countOfUpdateVectorsSinceFinalizing = 0
         
     def distanceToSquare(self, other):
-        return (other.x-self.x)**2 + (other.y-self.y)**2
+        return (other.x-self.x)*(other.x-self.x) + (other.y-self.y)*(other.y-self.y)
 
     def updateHeading(self, xn, yn, weight=0.05):
         self.xBuffer += xn*weight
@@ -71,7 +71,7 @@ class Follower(object):
         vectorRawX = target.x() - self.x
         vectorRawY = target.y() - self.y
 
-        divisorUnit = math.sqrt(vectorRawX**2 + vectorRawY**2)
+        divisorUnit = math.sqrt(vectorRawX*vectorRawX + vectorRawY*vectorRawY)
             
         vectorX = min(max(vectorRawX/divisorUnit, -1), 1)
         vectorY = min(max(vectorRawY/divisorUnit, -1), 1)
@@ -87,7 +87,7 @@ class Follower(object):
 
         self.updateHeading(vectorX, vectorY, FOCUS_ON_GOAL)
 
-        if divisorUnit > DISTANCE_ROOT and self.state is not STATE_NORMAL:
+        if self.state is not STATE_NORMAL and divisorUnit > DISTANCE_ROOT:
             self.state = STATE_NORMAL
 
     def navigateTowardsOthers(self, xAvg, yAvg):
@@ -101,7 +101,7 @@ class Follower(object):
         
         self.updateHeading(vectorX, vectorY, FOCUS_ON_COHESION)
 
-    def navigateClear(self, obstacles):
+    def navigateClearOfAll(self, obstacles):
         vectorXAversion = 0
         vectorYAversion = 0
         vectorX = 0
@@ -110,14 +110,13 @@ class Follower(object):
         for pieceOther in obstacles:
             if pieceOther is self:
                 continue
-            if abs(pieceOther.x - self.x) > DISTANCE_AVERSION or abs(pieceOther.y - self.y) > DISTANCE_AVERSION:
-                continue
-            d = self.distanceToSquare(pieceOther)
-            if d > DISTANCE_AVERSION:
-                continue
             vectorRawX = (self.x - pieceOther.x)
             vectorRawY = (self.y - pieceOther.y)
-
+            if abs(vectorRawX) > DISTANCE_AVERSION or abs(vectorRawY) > DISTANCE_AVERSION:
+                continue
+            if self.distanceToSquare(pieceOther) > DISTANCE_AVERSION:
+                continue
+            
             divisorUnit = math.sqrt(vectorRawX**2 + vectorRawY**2)
             
             vectorX = min(max(vectorRawX/divisorUnit, -1), 1)
@@ -127,7 +126,41 @@ class Follower(object):
             vectorYAversion += vectorY
             clearing = True
         if clearing:
-            self.updateHeading(vectorX, vectorY, FOCUS_ON_AVOIDANCE)
+            self.updateHeading(vectorXAversion, vectorYAversion, FOCUS_ON_AVOIDANCE)
+
+    def navigateClear(self, obstacles):
+        vectorXAversion = 0
+        vectorYAversion = 0
+        vectorX = 0
+        vectorY = 0
+        clearing = False
+        
+        closestX = 9999
+        closestY = 9999
+        for pieceOther in obstacles:
+            if pieceOther is self:
+                continue
+            vectorRawX = (self.x - pieceOther.x)
+            vectorRawY = (self.y - pieceOther.y)
+            if abs(vectorRawX) > DISTANCE_AVERSION or abs(vectorRawY) > DISTANCE_AVERSION:
+                continue
+            if self.distanceToSquare(pieceOther) > DISTANCE_AVERSION:
+                continue
+            if abs(vectorRawX) < abs(closestX) and abs(vectorRawY) < abs(closestY):
+                closestX = vectorRawX
+                closestY = vectorRawY
+                clearing = True
+            
+        if clearing:
+            divisorUnit = math.sqrt(closestX**2 + closestY**2)
+            
+            vectorX = min(max(closestX/divisorUnit, -1), 1)
+            vectorY = min(max(closestY/divisorUnit, -1), 1)
+            
+            vectorXAversion += vectorX
+            vectorYAversion += vectorY
+            
+            self.updateHeading(vectorXAversion, vectorYAversion, FOCUS_ON_AVOIDANCE)
 
     def navigate(self, xAvg, yAvg, target, others):
         # Towards other boids
@@ -156,15 +189,15 @@ class Follower(object):
 
         # Circle with line pointing in the direction of travel and 2 shading arcs
         painter.drawEllipse(QtCore.QPoint(x, y), SQUARE_SIZE, SQUARE_SIZE)
-        painter.drawLine(x, y,
-                         x+math.cos(angle*math.pi/180)*SQUARE_SIZE, y+math.sin(angle*math.pi/180)*SQUARE_SIZE)
+        #painter.drawLine(x, y,
+        #                 x+math.cos(angle*math.pi/180)*SQUARE_SIZE, y+math.sin(angle*math.pi/180)*SQUARE_SIZE)
         painter.setPen(color.darker())
         painter.drawArc(x-SQUARE_SIZE+1, y-SQUARE_SIZE+1,
                         SQUARE_SIZE*2-2, SQUARE_SIZE*2-2,
                         (-angle+270)*16, (-180)*16)
-        painter.setPen(color.lighter())
-        painter.drawArc(x-SQUARE_SIZE+1, y-SQUARE_SIZE+1,
-                        SQUARE_SIZE*2-2, SQUARE_SIZE*2-2,
-                        (-angle+90)*16, (-180)*16)
+        #painter.setPen(color.lighter())
+        #painter.drawArc(x-SQUARE_SIZE+1, y-SQUARE_SIZE+1,
+        #                SQUARE_SIZE*2-2, SQUARE_SIZE*2-2,
+        #                (-angle+90)*16, (-180)*16)
 
         

@@ -19,7 +19,7 @@ class POINT(Structure):
     _fields_ = [("x", c_long), ("y", c_long)]
 
 NUM_BIOTS = 8
-TPS = 60
+TPS = 45
 TICK_SPEED = 1000/TPS
 
 def queryMousePosition():
@@ -120,7 +120,6 @@ class Board(QtGui.QFrame):
         xAvg = sum([piece.x for piece in self.pieces])/len(self.pieces)
         yAvg = sum([piece.y for piece in self.pieces])/len(self.pieces)
 
-
         for piece in self.pieces:
             piece.navigate(xAvg, yAvg, self.target, self.pieces)
 
@@ -139,4 +138,6 @@ def main():
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
+    import cProfile
     main()
+    #cProfile.run( "main()" )
