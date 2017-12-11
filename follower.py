@@ -184,7 +184,7 @@ class Follower(object):
         color = self.color
         x = self.x
         y = self.y
-        angle = self.heading
+        angle = self.heading*180/math.pi
         painter.setPen(color)
 
         # Circle with line pointing in the direction of travel and 2 shading arcs
