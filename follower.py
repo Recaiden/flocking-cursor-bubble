@@ -22,11 +22,13 @@ FOCUS_ON_AVOIDANCE = 0.7
 DISTANCE_ROOT = 25
 DISTANCE_AVERSION = DISTANCE_ROOT**2
 
-MOVEMENT_FACTOR = 3
+MOVEMENT_FACTOR = 2
 SQUARE_SIZE = 3
 
-colorTable = [0x101010, 0xCC6666, 0x66CC66, 0x6666CC,
-                      0xCCCC66, 0xCC66CC, 0x66CCCC, 0xDAAA00]
+colorTable = [0x16161D, 0xD9D9D1,
+              0xCC6666, 0x66CC66, 0x6666CC,
+              0xCCCC66, 0xCC66CC, 0x66CCCC,
+              0xDAAA00, 0xDA00AA, 0xAADA00, 0xAA00DA, 0x00DAAA, 0x00AADA]
 
 class Follower(object):
     
@@ -42,6 +44,7 @@ class Follower(object):
         self.color = QtGui.QColor(random.choice(colorTable))
 
         self.countOfUpdateVectorsSinceFinalizing = 0
+        self.movement = MOVEMENT_FACTOR
         
     def distanceToSquare(self, other):
         return (other.x-self.x)*(other.x-self.x) + (other.y-self.y)*(other.y-self.y)
@@ -61,7 +64,10 @@ class Follower(object):
         self.yBuffer += math.sin(self.heading)
         self.yBuffer /= 2
 
+        headingOld = self.heading
         self.heading = math.atan2(self.yBuffer, self.xBuffer)
+        headingdelta = min( abs(self.heading - headingOld), math.pi*2)
+        self.movement = max( 0.5, self.movement * max(0.5, ((math.pi - headingdelta) / math.pi)) )
         
         self.countOfUpdateVectorsSinceFinalizing = 0
         self.xBuffer = 0#math.cos(self.heading)
@@ -84,6 +90,11 @@ class Follower(object):
             vectorY, vectorX = vectorX, -1*vectorY
         elif self.state is STATE_TURN_RIGHT:
             vectorY, vectorX = -1*vectorX, vectorY
+
+        if self.state is STATE_NORMAL:
+            self.movement = min(self.movement + 0.1, MOVEMENT_FACTOR*2)
+        elif self.movement > MOVEMENT_FACTOR:
+            self.movement -= 0.2
 
         self.updateHeading(vectorX, vectorY, FOCUS_ON_GOAL)
 
@@ -177,8 +188,8 @@ class Follower(object):
         
         self.xOld = self.x
         self.yOld = self.y
-        self.x += math.cos(self.heading)*MOVEMENT_FACTOR
-        self.y += math.sin(self.heading)*MOVEMENT_FACTOR
+        self.x += math.cos(self.heading)*self.movement
+        self.y += math.sin(self.heading)*self.movement
 
     def draw(self, painter, target):
         color = self.color
